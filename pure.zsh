@@ -120,7 +120,7 @@ prompt_pure_preprompt_render() {
 	# Add git branch and dirty status info.
 	typeset -gA prompt_pure_vcs_info
 	if [[ -n $prompt_pure_vcs_info[branch] ]]; then
-		preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}${prompt_pure_git_dirty}%f')
+		preprompt_parts+=("%F{$git_color}"'${prompt_pure_vcs_info[branch]}${prompt_pure_git_status}%f')
 	fi
 	# Git pull/push arrows.
 	if [[ -n $prompt_pure_git_arrows ]]; then
@@ -244,17 +244,27 @@ prompt_pure_async_vcs_info() {
 }
 
 # fastest possible way to check if repo is dirty
-prompt_pure_async_git_dirty() {
-	setopt localoptions noshwordsplit
-	local untracked_dirty=$1
+prompt_pure_async_git_status() {
+	local file_status status_summary untracked unstaged staged
 
-	if [[ $untracked_dirty = 0 ]]; then
-		command git diff --no-ext-diff --quiet --exit-code
-	else
-		test -z "$(command git status --porcelain --ignore-submodules -unormal)"
-	fi
+	rm -f /tmp/zsh-git-status
 
-	return $?
+	git status --porcelain --ignore-submodules -unormal | while IFS='' read -r file_status; do
+		if [[ "${file_status:0:2}" == '??' ]]; then
+			echo "untracked: $file_status" >> /tmp/zsh-git-status
+			untracked='%F{red}●'
+		elif [[ "${file_status:0:1}" != ' ' ]]; then
+				echo "staged: $file_status" >> /tmp/zsh-git-status
+				staged='%F{green}●'
+		elif [[ "${file_status:1:2}" != ' ' ]]; then
+			echo "unstaged: $file_status" >> /tmp/zsh-git-status
+			unstaged='%F{yellow}●'
+		fi
+	done
+
+	status_summary="${untracked}${unstaged}${staged}"
+
+	[[ -n $status_summary ]] && echo "${status_summary}%f"
 }
 
 prompt_pure_async_git_fetch() {
@@ -325,7 +335,7 @@ prompt_pure_async_tasks() {
 		async_flush_jobs "prompt_pure"
 
 		# reset git preprompt variables, switching working tree
-		unset prompt_pure_git_dirty
+		unset prompt_pure_git_status
 		unset prompt_pure_git_last_dirty_check_timestamp
 		unset prompt_pure_git_arrows
 		unset prompt_pure_git_fetch_pattern
@@ -365,7 +375,7 @@ prompt_pure_async_refresh() {
 	if (( time_since_last_dirty_check > ${PURE_GIT_DELAY_DIRTY_CHECK:-1800} )); then
 		unset prompt_pure_git_last_dirty_check_timestamp
 		# check check if there is anything to pull
-		async_job "prompt_pure" prompt_pure_async_git_dirty ${PURE_GIT_UNTRACKED_DIRTY:-1}
+		async_job "prompt_pure" prompt_pure_async_git_status
 	fi
 }
 
@@ -426,15 +436,15 @@ prompt_pure_async_callback() {
 				prompt_pure_git_fetch_pattern+="|$output"
 			fi
 			;;
-		prompt_pure_async_git_dirty)
-			local prev_dirty=$prompt_pure_git_dirty
-			if (( code == 0 )); then
-				unset prompt_pure_git_dirty
+		prompt_pure_async_git_status)
+			local prev_status=$prompt_pure_git_status
+			if [[ -z "$output" ]]; then
+				unset prompt_pure_git_status
 			else
-				typeset -g prompt_pure_git_dirty="*"
+				typeset -g prompt_pure_git_status="$output"
 			fi
 
-			[[ $prev_dirty != $prompt_pure_git_dirty ]] && do_render=1
+			[[ $prev_status != $prompt_pure_git_status ]] && do_render=1
 
 			# When prompt_pure_git_last_dirty_check_timestamp is set, the git info is displayed in a different color.
 			# To distinguish between a "fresh" and a "cached" result, the preprompt is rendered before setting this
