@@ -130,6 +130,10 @@ prompt_pure_preprompt_render() {
 	if [[ -n $AWS_PROFILE ]]; then
 		preprompt_parts+=("%F{208}☁︎ ${AWS_PROFILE}%f")
 	fi
+	# Kubernetes context
+	if [[ -n $prompt_pure_kubernetes_context ]]; then
+		preprompt_parts+=("%F{39}☸︎ ${prompt_pure_kubernetes_context}%f")
+	fi
 
 	# Username and machine, if applicable.
 	[[ -n $prompt_pure_state[username] ]] && preprompt_parts+=('${prompt_pure_state[username]}')
@@ -318,6 +322,11 @@ prompt_pure_async_git_arrows() {
 	command git rev-list --left-right --count HEAD...@'{u}'
 }
 
+prompt_pure_async_kubernetes_context() {
+	setopt localoptions noshwordsplit
+	command kubectl config current-context 2>/dev/null
+}
+
 prompt_pure_async_tasks() {
 	setopt localoptions noshwordsplit
 
@@ -381,6 +390,8 @@ prompt_pure_async_refresh() {
 		# check check if there is anything to pull
 		async_job "prompt_pure" prompt_pure_async_git_status
 	fi
+
+	async_job "prompt_pure" prompt_pure_async_kubernetes_context
 }
 
 prompt_pure_check_git_arrows() {
@@ -479,6 +490,16 @@ prompt_pure_async_callback() {
 					fi
 					;;
 			esac
+			;;
+		prompt_pure_async_kubernetes_context)
+			local prev_context=$prompt_pure_kubernetes_context
+			if (( code == 0 )); then
+				typeset -g prompt_pure_kubernetes_context="$output"
+			else
+				unset prompt_pure_kubernetes_context
+			fi
+
+			[[ $prev_context != $prompt_pure_kubernetes_context ]] && do_render=1
 			;;
 	esac
 
