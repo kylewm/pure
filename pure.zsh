@@ -126,6 +126,10 @@ prompt_pure_preprompt_render() {
 	if [[ -n $prompt_pure_git_arrows ]]; then
 		preprompt_parts+=('%F{cyan}${prompt_pure_git_arrows}%f')
 	fi
+	# AWS profile
+	if [[ -n $AWS_PROFILE ]]; then
+		preprompt_parts+=("%F{208}☁︎ ${AWS_PROFILE}%f")
+	fi
 
 	# Username and machine, if applicable.
 	[[ -n $prompt_pure_state[username] ]] && preprompt_parts+=('${prompt_pure_state[username]}')
