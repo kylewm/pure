@@ -255,7 +255,7 @@ prompt_pure_async_vcs_info() {
 prompt_pure_async_git_status() {
 	local file_status status_summary untracked unstaged staged
 
-	git status --porcelain --ignore-submodules -unormal | while IFS='' read -r file_status; do
+	git --no-optional-locks status --porcelain --ignore-submodules -unormal | while IFS='' read -r file_status; do
 		if [[ "${file_status:0:2}" == '??' ]]; then
 			untracked='%F{red}●'
 		else
