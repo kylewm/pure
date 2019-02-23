@@ -239,7 +239,7 @@ prompt_pure_async_vcs_info() {
 	zstyle ':vcs_info:*' max-exports 2
 	# export branch (%b) and git toplevel (%R)
 	zstyle ':vcs_info:git*' formats '%b' '%R'
-	zstyle ':vcs_info:git*' actionformats '%b|%a' '%R'
+	zstyle ':vcs_info:git*' actionformats '%b|%K{red}%F{white}%a%f%k' '%R'
 
 	vcs_info
 
